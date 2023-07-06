@@ -1,4 +1,12 @@
-## Not Being Maintained 
+
+# The project is renamed to mouse2joystick_Advanced_Settings and add new features
+***
+## Version 1.0.0.0
+ * You can specify a key combination of up to two keys to simulate a joy button.
+ * You can specify multiple keys or key combinations to simulate the same joy button.
+ * You can specify when the key is held down or after pressing the mouse to pause the simulated right stick.
+ * You can add a delay of 1-500ms to the keys, and even if the keys are actually released, they will still be considered held down for a while.
+ * You can press the toggle key to disable current set, and specify another set to enable.
 
 # Script last updated on May 20, 2020.
 Version 0.4.1.4
