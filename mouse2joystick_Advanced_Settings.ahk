@@ -1,6 +1,6 @@
 ﻿;	;	;	;	;	;	;	;	;	;	;	;	;	;	;	;
 ;	Modified for Advanced Settings by: Alchemist233 ()
-;	Last Modified Date: 2023-07-06
+;	Last Modified Date: 2023-07-08
 
 ;	Modified for CEMU by: CemuUser8 (https://www.reddit.com/r/cemu/comments/5zn0xa/autohotkey_script_to_use_mouse_for_camera/)
 ;	Last Modified Date: 2020-05-19
@@ -25,7 +25,7 @@
 ;			Credit to author(s) of vJoy @ http://vjoystick.sourceforge.net/site/
 ;			evilC did the CvJoyInterface.ahk
 ;
-version := "v1.0.0.0"
+version := "v1.0.0.1"
 #NoEnv  																; Recommended for performance and compatibility with future AutoHotkey releases.
 SendMode Input															; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  											; Ensures a consistent starting directory.
@@ -1587,7 +1587,7 @@ AdvancedSettings:
 	}
 	setToggle := False
 	GUI, Main:+Disabled
-	GUI, AdvancedSettings:New, +HWNDAdvancedSettingsHWND -MinimizeBox +OwnerMain +Resize +MinSize850 -MaximizeBox 
+	GUI, AdvancedSettings:New, +HWNDAdvancedSettingsHWND +OwnerMain -MinimizeBox
 	GUI, Margin, 10, 7.5
 	GUI, Font,, Lucida Sans Typewriter ; Courier New
 	GUI, Add, Text, W0 H0 vLoseFocus, Hidden
@@ -1602,7 +1602,7 @@ AdvancedSettings:
 	GUI, Add, Button, W87 H35 xp+154 yp-15 gSaveButton, Save
 	GUI, Add, Button, W87 H35 x+9 gCancelButton, Cancel
 	GUI, Add, Button, W87 H35 x+9 gClearButton, Clear		
-	GUI, Show,, Advanced Settings
+	GUI, Show, W850, Advanced Settings
 	GuiControl, Focus, LoseFocus
 Return
 
@@ -1698,38 +1698,6 @@ addControls:
 	Gui, Add, UpDown, % "Range0-500 vophDUD" . currjoyBtnNum, 0
 Return
 
-; Validate and assemble new key information
-getNewKeyInfo:
-	GUIControlGet, keyName1,, opkey1st%currjoyBtnNum%
-	GUIControlGet, keyName2,, opkey2nd%currjoyBtnNum%
-	GUIControlGet, togToSet,, optogToSet%currjoyBtnNum%
-	GUIControlGet, disMmState,, opdisMmState%currjoyBtnNum%
-	GUIControlGet, holdDelay,, opholdDelay%currjoyBtnNum%
-	If (keyName1 = waitKey)
-		keyName1 := ""
-	If (keyName2 = waitKey)
-		keyName2 := ""
-	If (keyName1 = keyName2) {
-		If (keyName1 = "")
-			Return
-		keyName2 := ""
-	}
-	doubleKey := keyName1 = "" OR keyName2 = "" ? "" : " & "
-	If (InStr(keyName1, "wheel"))
-		newKeyInfo := keyName1 . blankOptions
-	Else If (InStr(keyName2, "wheel"))
-		newKeyInfo := keyName1 . doubleKey . keyName2 . blankOptions
-	Else {
-		If (!togToSet)
-			togToSet := ""
-		If (!disMmState)
-			disMmState := ""
-		If (!holdDelay)
-			holdDelay := ""
-		newKeyInfo := keyName1 . doubleKey . keyName2 . "^" . togToSet . "^" . disMmState . "^" . holdDelay
-	}
-Return
-
 ; Toggle between editing or browsing state for '✏' button
 editOrSubmit:
 	currjoyBtnNum := SubStr(A_GuiControl, 10)
@@ -1748,13 +1716,42 @@ editOrSubmit:
 	}
 	Else {
 		Gosub, hideControls
-		Gosub, getNewKeyInfo
+		GUIControlGet, keyName1,, opkey1st%currjoyBtnNum%
+		GUIControlGet, keyName2,, opkey2nd%currjoyBtnNum%
+		GUIControlGet, togToSet,, optogToSet%currjoyBtnNum%
+		GUIControlGet, disMmState,, opdisMmState%currjoyBtnNum%
+		GUIControlGet, holdDelay,, opholdDelay%currjoyBtnNum%
+		If (keyName1 = waitKey)
+			keyName1 := ""
+		If (keyName2 = waitKey)
+			keyName2 := ""
+		If (keyName1 = keyName2) {
+			If (keyName1 = "")
+				Return
+			keyName2 := ""
+		}
+		doubleKey := keyName1 = "" OR keyName2 = "" ? "" : " & "
+		If (InStr(keyName1, "wheel"))
+			newKeyInfo := keyName1 . blankOptions
+		Else If (InStr(keyName2, "wheel"))
+			newKeyInfo := keyName1 . doubleKey . keyName2 . blankOptions
+		Else {
+			If (!togToSet)
+				togToSet := ""
+			If (!disMmState)
+				disMmState := ""
+			If (!holdDelay)
+				holdDelay := ""
+			newKeyInfo := keyName1 . doubleKey . keyName2 . "^" . togToSet . "^" . disMmState . "^" . holdDelay
+		}
 		Gosub, delDupKeyInfos
+		tempInfos := keyGroupList[currSetGUI, currjoyBtnNum]
 		If ((keyInfoEdit = addNewKey) OR (keyInfoArray[1] = newKeyName))
-			keyGroupList[currSetGUI, currjoyBtnNum] .= newKeyInfo . "|"
+			tempInfos .= newKeyInfo . "|"
 		Else
-			keyGroupList[currSetGUI, currjoyBtnNum] := StrReplace(keyGroupList[currSetGUI, currjoyBtnNum], keyInfoEdit, newKeyInfo)
-		GuiControl,, opkeyInfo%currjoyBtnNum%, % "|" . keyGroupList[currSetGUI, currjoyBtnNum] . addNewKey
+			tempInfos := StrReplace(tempInfos, keyInfoEdit, newKeyInfo)
+		keyGroupList[currSetGUI, currjoyBtnNum] := tempInfos
+		GuiControl,, opkeyInfo%currjoyBtnNum%, % "|" . tempInfos . addNewKey
 		GuiControl, ChooseString, opkeyInfo%currjoyBtnNum%, %newKeyInfo%
 	}
 Return
@@ -1763,13 +1760,21 @@ Return
 delOrCancel:
 	currjoyBtnNum := SubStr(A_GuiControl, 9)
 	GuiControlGet, keyInfoDel,, opkeyInfo%currjoyBtnNum%
-delKeyInfo:
+delDstKeyInfo:
     If (!browseMode[currjoyBtnNum]) {
 		Gosub, hideControls
 		Return
     }
-	keyGroupList[currSetGUI, currjoyBtnNum] := StrReplace(keyGroupList[currSetGUI, currjoyBtnNum], keyInfoDel . "|", "")
-	GuiControl,, opkeyInfo%currjoyBtnNum%, % "|" . keyGroupList[currSetGUI, currjoyBtnNum] . addNewKey
+	tempInfos := keyGroupList[currSetGUI, currjoyBtnNum]
+	If (!tempInfos)
+		Return
+	tempInfoDel := "|" . keyInfoDel . "|"
+	If (InStr(tempInfos, tempInfoDel))
+		tempInfos := StrReplace(tempInfos, tempInfoDel, "|")
+	Else
+		tempInfos := StrReplace("|" . tempInfos, tempInfoDel, "")
+	keyGroupList[currSetGUI, currjoyBtnNum] := tempInfos
+	GuiControl,, opkeyInfo%currjoyBtnNum%, % "|" . tempInfos . addNewKey
 	GuiControl, Choose, opkeyInfo%currjoyBtnNum%, 1
 Return
 
@@ -1786,9 +1791,9 @@ delDupKeyInfos:
 				Continue
 			currjoyBtnNum := joyBtnNum
 			dstCurrMode := browseMode[joyBtnNum]
-			Gosub, delKeyInfo
+			Gosub, delDstKeyInfo
 			If (!dstCurrMode) 
-				Gosub, delKeyInfo
+				Gosub, delDstKeyInfo
 		}
 	}
 	currjoyBtnNum := tempNum
