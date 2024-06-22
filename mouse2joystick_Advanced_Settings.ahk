@@ -1,4 +1,4 @@
-﻿;	;	;	;	;	;	;	;	;	;	;	;	;	;	;	;
+;	;	;	;	;	;	;	;	;	;	;	;	;	;	;	;
 ;	Modified for Advanced Settings by: Alchemist233 ()
 ;	Last Modified Date: 2023-07-08
 
@@ -50,8 +50,8 @@ IF (A_PtrSize < 8) {
 	ExitApp
 }
 
-;OrigMouseSpeed := ""
-;DllCall("SystemParametersInfo", UInt, 0x70, UInt, 0, UIntP, OrigMouseSpeed, UInt, 0) ; Get Original Mouse Speed.
+VarSetCapacity(OrigMouse, 12, 0) ; 3 integers * 4 bytes each
+result := DllCall("SystemParametersInfo", UInt, 0x03, UInt, 0, Ptr, &OrigMouse, UInt, 0)
 
 toggle:=1													; On/off parameter for the hotkey.	Toggle 0 means controller is on. The placement of this variable is disturbing.
 
@@ -74,6 +74,7 @@ IfNotExist, settings.ini
 		nnp=.8
 		[General>Hotkeys]
 		controllerSwitchKey=F1
+		disableMouseAcc=1
 		mainSetToggleKey=F2
 		reloadKey=F3
 		exitKey=F4
@@ -325,6 +326,21 @@ controllerSwitch:
 			show_Mouse(False)
 		;DllCall("SystemParametersInfo", UInt, 0x71, UInt, 0, UInt, 10, UInt, 0)
 		
+		IF (disableMouseAcc) {
+			mouseParams := [0, 0, 0] ; Disable mouse acceleration
+
+			; Create a buffer to hold the parameters
+			VarSetCapacity(arr, 12, 0) ; 3 integers * 4 bytes each
+
+			; Set the acceleration parameters in the buffer
+			NumPut(mouseParams[1], arr, 0, "Int")
+			NumPut(mouseParams[2], arr, 4, "Int")
+			NumPut(mouseParams[3], arr, 8, "Int")
+
+			; Call SystemParametersInfo to set mouse acceleration
+			DllCall("SystemParametersInfo", UInt, 0x04, UInt, 0, Ptr, &arr, UInt, 0) ; SPI_SETMOUSE
+		}
+
 		IF (useAltMouseMethod) {
 			; md.Start()
 			LockMouseToWindow("ahk_id " . stick)
@@ -344,7 +360,7 @@ controllerSwitch:
 		
 		IF (hideCursor)
 			show_Mouse()				; No need to show cursor if not hidden.
-		;DllCall("SystemParametersInfo", UInt, 0x71, UInt, 0, UInt, OrigMouseSpeed, UInt, 0)  ; Restore the original speed.
+		DllCall("SystemParametersInfo", UInt, 0x04, UInt, 0, Ptr, &OrigMouse, UInt, 0) ; Restore the original speed.
 		; Gui, Controller:Hide
 		Gui, Controller:Hide
 	}
@@ -1067,7 +1083,7 @@ exitFunc() {
 	; md.Delete()
 	; md := ""
 	show_Mouse() ; DllCall("User32.dll\ShowCursor", "Int", 1)
-	;DllCall("SystemParametersInfo", UInt, 0x71, UInt, 0, UInt, OrigMouseSpeed, UInt, 0)  ; Restore the original speed.
+	DllCall("SystemParametersInfo", UInt, 0x04, UInt, 0, Ptr, &OrigMouse, UInt, 0) ; Restore the original speed.
 	ExitApp
 }
 
@@ -1140,6 +1156,8 @@ openSettings:
 		GUI, Add, Hotkey, xs+10 yp+20 w50 Limit190 vopcontrollerSwitchKey, % StrReplace(controllerSwitchKey, "#")
 		GUI, Add, CheckBox, % "h13 x+m yp+3 vopcontrollerSwitchKeyWin Checked" InStr(controllerSwitchKey, "#"), Use Windows key?
 		
+		GUI, Add, CheckBox, % "x+m yp vopdisableMouseAcc Checked" . disableMouseAcc, Disable Mouse Acceleration?
+
 		GUI, Add, GroupBox, x%SX% yp+40 w%groupBoxWidth% h50 Section, Toggle Main Set
 		GUI, Add, Hotkey, xs+10 yp+20 w50 Limit190 vopmainSetToggleKey, % StrReplace(mainSetToggleKey, "#")
 		GUI, Add, CheckBox, % "h13 x+m yp+3 vopmainSetToggleKeyWin Checked" InStr(mainSetToggleKey, "#"), Use Windows key?
@@ -1348,6 +1366,7 @@ SubmitAll:
 	IniWrite, % opfreq, settings.ini, General>Setup, freq
 	; Write General>Hotkeys
 	IniWrite, % opcontrollerSwitchKeyWin ? "#" . opcontrollerSwitchKey : opcontrollerSwitchKey, settings.ini, General>Hotkeys, controllerSwitchKey
+	IniWrite, % opdisableMouseAcc, settings.ini, General>Hotkeys, disableMouseAcc
 	IniWrite, % opmainSetToggleKeyWin ? "#" . mainSetToggleKey : mainSetToggleKey, settings.ini, General>Hotkeys, mainSetToggleKey
 	IniWrite, % opreloadKeyWin ? "#" . opreloadKey : opreloadKey, settings.ini, General>Hotkeys, reloadKey
 	IniWrite, % opexitKeyWin ? "#" . opexitKey : opexitKey, settings.ini, General>Hotkeys, exitKey
@@ -1515,6 +1534,7 @@ setSettingsToDefault:
 		freq=50
 		nnp=.8
 		controllerSwitchKey=F1
+		disableMouseAcc=1
 		mainSetToggleKey=F2
 		reloadKey=F3
 		exitKey=F4
